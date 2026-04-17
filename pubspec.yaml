@@ -1,0 +1,57 @@
+name: allo_secours
+description: Application mobile pour la géolocalisation des hôpitaux, pharmacies et autres services essentiels.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Geolocalisation (Google Maps retiré — nécessite une clé API)
+  geolocator: ^9.0.2
+  # google_maps_flutter: ^2.5.0  # Décommenter + ajouter la clé API dans AndroidManifest.xml
+
+  # HTTP et API
+  http: ^1.1.0
+  dio: ^5.3.0
+
+  # State Management
+  provider: ^6.0.0
+
+  # Local Storage
+  shared_preferences: ^2.2.0
+  sqflite: ^2.3.0
+
+  # UI et Navigation
+  get: ^4.6.5
+  smooth_page_indicator: ^1.1.0
+  flutter_svg: ^2.0.0
+  google_fonts: ^6.1.0
+  cached_network_image: ^3.3.0
+  flutter_staggered_animations: ^1.1.1
+
+  # Utilities
+  intl: ^0.19.0
+  uuid: ^4.0.0
+  permission_handler: ^12.0.1
+  shimmer: ^3.0.0
+  lottie: ^2.4.0
+  connectivity_plus: ^4.0.0
+  url_launcher: ^6.2.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/lottie/

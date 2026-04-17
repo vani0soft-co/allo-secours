@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Bundle identifier -->
+    <key>CFBundleIdentifier</key>
+    <string>com.allosecours.app</string>
+    
+    <!-- Localisation permissions -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Allo Secours a besoin d'accéder à votre localisation pour trouver les services à proximité.</string>
+    
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Allo Secours a besoin d'accéder à votre localisation pour trouver les services à proximité.</string>
+    
+    <!-- Maps API -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+    
+    <!-- Privacy permissions -->
+    <key>NSCameraUsageDescription</key>
+    <string>La caméra est nécessaire pour certaines fonctionnalités.</string>
+    
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Accès à la galerie photo pour télécharger des images.</string>
+</dict>
+</plist>

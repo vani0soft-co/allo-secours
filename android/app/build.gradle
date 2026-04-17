@@ -1,0 +1,33 @@
+android {
+    compileSdkVersion 34
+    ndkVersion "25.1.8937393"
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        applicationId "com.allosecours.app"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+dependencies {
+    // Google Maps
+    implementation 'com.google.maps.android:maps:18.2.0'
+    
+    // Location
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
+    
+    // Permissions
+    implementation 'com.google.android.gms:play-services-base:18.2.0'
+}

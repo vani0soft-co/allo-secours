@@ -1,0 +1,41 @@
+{
+    "name": "allo-secours-backend",
+    "version": "1.0.0",
+    "description": "Backend pour l'application Allo Secours",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "node src/index.js",
+        "dev": "nodemon src/index.js",
+        "test": "jest --detectOpenHandles",
+        "lint": "eslint src/",
+        "seed": "node src/seeds/seedDatabase.js"
+    },
+    "keywords": [
+        "allo-secours",
+        "geolocation",
+        "health"
+    ],
+    "author": "Your Team",
+    "license": "MIT",
+    "dependencies": {
+        "axios": "^1.5.0",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "express-async-errors": "^3.1.1",
+        "helmet": "^7.0.0",
+        "joi": "^17.11.0",
+        "jsonwebtoken": "^9.0.2",
+        "mongoose": "^7.5.0",
+        "mysql2": "^3.22.0",
+        "sequelize": "^6.37.8",
+        "uuid": "^9.0.0"
+    },
+    "devDependencies": {
+        "eslint": "^8.50.0",
+        "jest": "^29.7.0",
+        "nodemon": "^3.0.1",
+        "supertest": "^6.3.3"
+    }
+}
