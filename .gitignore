@@ -1,3 +1,6 @@
+# Claude Code internals
+.claude/
+
 # Flutter/Dart
 .dart_tool/
 .flutter-plugins
