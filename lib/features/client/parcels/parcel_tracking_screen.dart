@@ -1,0 +1,394 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_dimensions.dart';
+import '../../../core/utils/date_utils.dart';
+import '../../../core/utils/format_utils.dart';
+import '../../../core/widgets/loading_widget.dart';
+import '../../../models/parcel_model.dart';
+import '../../../providers/parcel_provider.dart';
+
+class ParcelTrackingScreen extends ConsumerWidget {
+  final String parcelId;
+  const ParcelTrackingScreen({super.key, required this.parcelId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final parcelAsync = ref.watch(parcelStreamProvider(parcelId));
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Suivi du colis'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: parcelAsync.when(
+        data: (parcel) => _buildBody(context, parcel),
+        loading: () => const LoadingWidget(),
+        error: (e, _) => Center(child: Text('Erreur: $e')),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, ParcelModel parcel) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppDimensions.paddingM),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Statut principal
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.getStatusColor(parcel.status.name),
+                  AppColors.getStatusColor(parcel.status.name).withOpacity(0.7)
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(_statusIcon(parcel.status),
+                      color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(parcel.statusLabel,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      if (parcel.estimatedDelivery != null)
+                        Text(
+                            'Livraison estimée: ${AppDateUtils.formatDate(parcel.estimatedDelivery!)}',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.85),
+                                fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Code de tracking + QR
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Code de suivi',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary)),
+                          const SizedBox(height: 4),
+                          Text(parcel.trackingCode,
+                              style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1,
+                                  fontFamily: 'monospace')),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy_rounded,
+                          color: AppColors.primary),
+                      onPressed: () {
+                        Clipboard.setData(
+                            ClipboardData(text: parcel.trackingCode));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Code copié')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                QrImageView(
+                  data: parcel.trackingCode,
+                  version: QrVersions.auto,
+                  size: 120,
+                  backgroundColor: Colors.white,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Infos expéditeur / destinataire
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Détails du transport',
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 14),
+                _RouteRow(
+                  icon: Icons.radio_button_on_rounded,
+                  color: AppColors.primary,
+                  label: 'Départ',
+                  value: parcel.senderAddress,
+                  sub: parcel.senderName,
+                ),
+                Container(
+                  margin: const EdgeInsets.only(left: 10),
+                  height: 24,
+                  width: 2,
+                  color: AppColors.border,
+                ),
+                _RouteRow(
+                  icon: Icons.location_on_rounded,
+                  color: AppColors.error,
+                  label: 'Destination',
+                  value: parcel.recipientAddress,
+                  sub: '${parcel.recipientName} — ${parcel.recipientPhone}',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Infos colis
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Informations du colis',
+                    style: TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                        child: _InfoTile(
+                            label: 'Type', value: parcel.typeLabel)),
+                    Expanded(
+                        child: _InfoTile(
+                            label: 'Poids',
+                            value: '${parcel.weight} kg')),
+                    Expanded(
+                        child: _InfoTile(
+                            label: 'Tarif',
+                            value: FormatUtils.formatPrice(parcel.price))),
+                  ],
+                ),
+                if (parcel.note != null && parcel.note!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Text('Note: ${parcel.note}',
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textSecondary)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Timeline
+          const Text('Historique',
+              style: TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: parcel.statusHistory.isEmpty
+                ? const Center(
+                    child: Text('Aucun historique',
+                        style: TextStyle(color: AppColors.textSecondary)))
+                : Column(
+                    children: parcel.statusHistory.reversed
+                        .toList()
+                        .asMap()
+                        .entries
+                        .map((e) => _TimelineItem(
+                              item: e.value,
+                              isLast: e.key ==
+                                  parcel.statusHistory.length - 1,
+                            ))
+                        .toList(),
+                  ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  IconData _statusIcon(ParcelStatus s) {
+    switch (s) {
+      case ParcelStatus.pending: return Icons.schedule_rounded;
+      case ParcelStatus.pickedUp: return Icons.inventory_rounded;
+      case ParcelStatus.inTransit: return Icons.local_shipping_rounded;
+      case ParcelStatus.delivered: return Icons.done_all_rounded;
+      case ParcelStatus.cancelled: return Icons.cancel_rounded;
+    }
+  }
+}
+
+class _RouteRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  final String sub;
+
+  const _RouteRow({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.sub,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(sub,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoTile({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 11, color: AppColors.textSecondary)),
+        const SizedBox(height: 4),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+}
+
+class _TimelineItem extends StatelessWidget {
+  final ParcelStatusHistory item;
+  final bool isLast;
+  const _TimelineItem({required this.item, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                margin: const EdgeInsets.only(top: 4),
+                decoration: const BoxDecoration(
+                    color: AppColors.primary, shape: BoxShape.circle),
+              ),
+              if (!isLast)
+                Expanded(
+                    child: Container(
+                        width: 2, color: AppColors.border)),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.label,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 2),
+                  if (item.note != null)
+                    Text(item.note!,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  Text(AppDateUtils.formatDateTime(item.date),
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
