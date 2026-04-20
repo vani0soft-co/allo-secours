@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:allo_secours/models/service_model.dart';
 import 'package:allo_secours/services/api_service.dart';
+import 'package:allo_secours/utils/mock_data.dart';
 
 class ServicesProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -33,9 +34,12 @@ class ServicesProvider extends ChangeNotifier {
       }
       _error = null;
     } catch (e) {
-      _error = 'Erreur: $e';
-      _allServices = [];
-      _filteredServices = [];
+      // Serveur inaccessible → données mock instantanées
+      _allServices = category != null
+          ? MockData.getServicesByCategory(category)
+          : MockData.mockServices;
+      _filteredServices = _allServices;
+      _error = null;
     } finally {
       _isLoading = false;
       notifyListeners();

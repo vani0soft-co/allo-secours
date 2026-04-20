@@ -62,6 +62,18 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
+      // Serveur inaccessible → session locale automatique
+      if (_isOfflineError(e.toString())) {
+        await _createLocalSession(
+          email: email,
+          firstName: email.split('@').first,
+          lastName: '',
+        );
+        _isAuthenticated = true;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
       _error = _parseError(e.toString());
       _isLoading = false;
       _isAuthenticated = false;
@@ -94,6 +106,18 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
+      // Serveur inaccessible → création compte local automatique
+      if (_isOfflineError(e.toString())) {
+        await _createLocalSession(
+          email: email,
+          firstName: firstName,
+          lastName: lastName,
+        );
+        _isAuthenticated = true;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
       _error = _parseError(e.toString());
       _isLoading = false;
       notifyListeners();
@@ -163,6 +187,36 @@ class AuthProvider extends ChangeNotifier {
       'firstName': userData['firstName']?.toString() ?? '',
       'lastName': userData['lastName']?.toString() ?? '',
       'email': userData['email']?.toString() ?? '',
+    };
+  }
+
+  bool _isOfflineError(String error) {
+    return error.contains('connection') ||
+        error.contains('SocketException') ||
+        error.contains('timeout') ||
+        error.contains('ConnectionTimeout') ||
+        error.contains('Network') ||
+        error.contains('Failed host');
+  }
+
+  Future<void> _createLocalSession({
+    required String email,
+    required String firstName,
+    required String lastName,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', 'local_token_${email.hashCode}');
+    await prefs.setString('user_firstName', firstName.isEmpty ? email.split('@').first : firstName);
+    await prefs.setString('user_lastName', lastName);
+    await prefs.setString('user_email', email);
+    await prefs.setString('user_id', 'local_${email.hashCode}');
+
+    _token = 'local_token_${email.hashCode}';
+    _user = {
+      'id': 'local_${email.hashCode}',
+      'firstName': firstName.isEmpty ? email.split('@').first : firstName,
+      'lastName': lastName,
+      'email': email,
     };
   }
 
