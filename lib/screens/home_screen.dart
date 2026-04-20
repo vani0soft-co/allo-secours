@@ -17,812 +17,527 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _carouselController = PageController();
-  final TextEditingController _searchController = TextEditingController();
-  int _currentNavIndex = 0;
+  int _selectedNavIndex = 0;
 
-  final List<_CarouselItem> _carouselItems = const [
-    _CarouselItem(
-      title: 'Urgences 24h/24',
-      subtitle: 'Des services d\'urgence disponibles\nà toute heure',
-      gradient: AppColors.emergencyGradient,
-      icon: Icons.emergency_rounded,
+  // ── Slides du carrousel ────────────────────────────────────────────────
+  final List<_CarouselSlide> _slides = const [
+    _CarouselSlide(
+      title: 'Recherchez vos produits',
+      bold: 'PHARMACEUTIQUES',
+      suffix: 'sur Allô Secours.',
+      emoji: '💊',
+      colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
     ),
-    _CarouselItem(
-      title: 'Trouvez une pharmacie',
-      subtitle: 'Plus de 500 pharmacies\nrépertoriées près de vous',
-      gradient: AppColors.greenGradient,
-      icon: Icons.local_pharmacy_rounded,
+    _CarouselSlide(
+      title: 'Trouvez un',
+      bold: 'HÔPITAL',
+      suffix: 'près de chez vous.',
+      emoji: '🏥',
+      colors: [Color(0xFF0A2463), Color(0xFF3E92CC)],
     ),
-    _CarouselItem(
-      title: 'Consultez un spécialiste',
-      subtitle: 'Prenez rendez-vous facilement\navec nos médecins partenaires',
-      gradient: AppColors.primaryGradient,
-      icon: Icons.medical_services_rounded,
+    _CarouselSlide(
+      title: 'Appelez les',
+      bold: 'URGENCES',
+      suffix: 'en un clic.',
+      emoji: '🚑',
+      colors: [Color(0xFFB71C1C), Color(0xFFEF5350)],
     ),
+    _CarouselSlide(
+      title: 'Prenez',
+      bold: 'RENDEZ-VOUS',
+      suffix: 'avec un spécialiste.',
+      emoji: '📅',
+      colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
+    ),
+  ];
+
+  // ── Catégories de la grille ────────────────────────────────────────────
+  final List<_Category> _categories = const [
+    _Category(label: 'Hôpitaux', emoji: '🏥', route: AppRoutes.hospitals),
+    _Category(label: 'Pharmacies', emoji: '🧑‍⚕️', route: AppRoutes.pharmacies),
+    _Category(label: 'Médicaments', emoji: '💊', route: AppRoutes.pharmacies),
+    _Category(label: 'Spécialistes', emoji: '👨‍⚕️', route: AppRoutes.services),
+    _Category(label: 'Rendez-vous', emoji: '📅', route: null),
+    _Category(label: 'Urgences', emoji: '🚑', route: AppRoutes.emergency),
+    _Category(label: 'Imag/Radio', emoji: '🩻', route: null),
+    _Category(label: 'Discutez', emoji: '💬', route: AppRoutes.myOpinion),
+    _Category(label: 'Votre avis', emoji: '⭐', route: AppRoutes.myOpinion),
   ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LocationProvider>().getCurrentLocation();
+      final loc = context.read<LocationProvider>();
+      if (!loc.hasLocation) {
+        loc.useSimulatedLocation();
+      }
     });
   }
 
   @override
   void dispose() {
     _carouselController.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
-  void _onSearchSubmit(String query) {
-    if (query.trim().isEmpty) return;
-    Get.toNamed(AppRoutes.services, arguments: {'query': query.trim()});
+  void _onNavTap(int index) {
+    setState(() => _selectedNavIndex = index);
+    switch (index) {
+      case 0:
+        break; // home déjà affiché
+      case 1:
+        Get.toNamed(AppRoutes.mySearches);
+        break;
+      case 2:
+        Get.toNamed(AppRoutes.profile);
+        break;
+      case 3:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Notifications bientôt disponibles',
+                style: GoogleFonts.poppins()),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.primary,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        break;
+    }
+  }
+
+  void _onCategoryTap(_Category cat) {
+    if (cat.route != null) {
+      Get.toNamed(cat.route!);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${cat.label} — bientôt disponible',
+              style: GoogleFonts.poppins()),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.primary,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // ─── SliverAppBar avec gradient ──────────────────────────────────
-          SliverAppBar(
-            expandedHeight: 160,
-            floating: false,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ─── Row: greeting + notifications ───────────────
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Consumer<AuthProvider>(
-                              builder: (context, auth, _) => Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Bonjour, ${auth.userName.split(' ').first} \u{1F44B}',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Consumer<LocationProvider>(
-                                    builder: (context, loc, _) => Row(
-                                      children: [
-                                        Icon(
-                                          loc.currentLocation != null
-                                              ? Icons.location_on_rounded
-                                              : Icons.location_off_rounded,
-                                          size: 12,
-                                          color: Colors.white.withValues(
-                                              alpha: 0.75),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          loc.currentLocation != null
-                                              ? 'Position activée'
-                                              : 'Activez votre localisation',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 11,
-                                            color: Colors.white.withValues(
-                                                alpha: 0.75),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                _buildAppBarAction(
-                                  icon: Icons.notifications_outlined,
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('Aucune nouvelle notification'),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _buildAppBarAction(
-                                  icon: Icons.person_outline_rounded,
-                                  onTap: () =>
-                                      Get.toNamed(AppRoutes.profile),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
+    final auth = context.watch<AuthProvider>();
+    final firstName = auth.userName.split(' ').first;
 
-                        // ─── Barre de recherche ───────────────────────────
-                        Container(
-                          height: 46,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color:
-                                    AppColors.darkBlue.withValues(alpha: 0.15),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            onSubmitted: _onSearchSubmit,
-                            onChanged: (value) {
-                              setState(() {});
-                              if (value.length >= 3) _onSearchSubmit(value);
-                            },
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              color: AppColors.textDark,
-                            ),
-                            decoration: InputDecoration(
-                              hintText:
-                                  'Hôpital, pharmacie, spécialiste...',
-                              hintStyle: GoogleFonts.poppins(
-                                color: AppColors.mediumGray,
-                                fontSize: 13,
-                              ),
-                              prefixIcon: const Icon(
-                                Icons.search_rounded,
-                                color: AppColors.primaryLight,
-                                size: 20,
-                              ),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 16),
-                                      color: AppColors.mediumGray,
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        setState(() {});
-                                      },
-                                    )
-                                  : null,
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      drawer: _buildDrawer(auth),
+
+      // ─── AppBar ────────────────────────────────────────────────────────
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
+        title: Text(
+          'Bonjour $firstName !',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        ),
+      ),
+
+      // ─── Corps ─────────────────────────────────────────────────────────
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Carrousel
+            _buildCarousel(),
+
+            // Indicateur de page
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: SmoothPageIndicator(
+                controller: _carouselController,
+                count: _slides.length,
+                effect: ExpandingDotsEffect(
+                  activeDotColor: AppColors.primary,
+                  dotColor: Colors.grey.shade300,
+                  dotHeight: 8,
+                  dotWidth: 8,
+                  expansionFactor: 3,
+                ),
+              ),
+            ),
+
+            // Grille des catégories 3×3
+            _buildCategoryGrid(),
+
+            // Barre verte décorative
+            Container(
+              height: 6,
+              color: AppColors.secondary,
+            ),
+          ],
+        ),
+      ),
+
+      // ─── Bottom Navigation ─────────────────────────────────────────────
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  // ── Carrousel ────────────────────────────────────────────────────────────
+  Widget _buildCarousel() {
+    return SizedBox(
+      height: 150,
+      child: PageView.builder(
+        controller: _carouselController,
+        itemCount: _slides.length,
+        onPageChanged: (i) => setState(() {}),
+        itemBuilder: (context, i) => _buildSlide(_slides[i]),
+      ),
+    );
+  }
+
+  Widget _buildSlide(_CarouselSlide slide) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Row(
+        children: [
+          // Texte à gauche
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  slide.title,
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF555555),
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  slide.bold,
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFF111111),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'sur ',
+                        style: GoogleFonts.poppins(
+                          color: const Color(0xFF555555),
+                          fontSize: 13,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Allô Secours.',
+                        style: GoogleFonts.poppins(
+                          color: AppColors.primary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Emoji/image à droite
+          Text(
+            slide.emoji,
+            style: const TextStyle(fontSize: 80),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Grille 3×3 ───────────────────────────────────────────────────────────
+  Widget _buildCategoryGrid() {
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: _categories.length,
+      itemBuilder: (context, i) => _buildCategoryCard(_categories[i]),
+    );
+  }
+
+  Widget _buildCategoryCard(_Category cat) {
+    return GestureDetector(
+      onTap: () => _onCategoryTap(cat),
+      child: Column(
+        children: [
+          // Carte icône
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  cat.emoji,
+                  style: const TextStyle(fontSize: 42),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 5),
+          // Label
+          Text(
+            cat.label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF212121),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 
-          SliverToBoxAdapter(
+  // ── Bottom Navigation Bar ────────────────────────────────────────────────
+  Widget _buildBottomNav() {
+    final items = [
+      const _NavItem(icon: Icons.home_filled, label: ''),
+      const _NavItem(icon: Icons.playlist_add_check_rounded, label: ''),
+      const _NavItem(icon: Icons.person_outline_rounded, label: ''),
+      const _NavItem(icon: Icons.notifications_none_rounded, label: ''),
+    ];
+    return Container(
+      height: 64,
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+        boxShadow: [
+          BoxShadow(
+              color: Color(0x44000000), blurRadius: 8, offset: Offset(0, -2)),
+        ],
+      ),
+      child: Row(
+        children: List.generate(items.length, (i) {
+          final selected = _selectedNavIndex == i;
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _onNavTap(i),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    items[i].icon,
+                    color: selected
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.5),
+                    size: 28,
+                  ),
+                  if (selected)
+                    Container(
+                      margin: const EdgeInsets.only(top: 3),
+                      width: 5,
+                      height: 5,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ── Drawer latéral ───────────────────────────────────────────────────────
+  Widget _buildDrawer(AuthProvider auth) {
+    final user = auth.user;
+    return Drawer(
+      child: Column(
+        children: [
+          // En-tête
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
+            decoration: const BoxDecoration(
+              gradient: AppColors.primaryGradient,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ─── Carrousel ────────────────────────────────────────────
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 160,
-                  child: Stack(
-                    children: [
-                      PageView.builder(
-                        controller: _carouselController,
-                        itemCount: _carouselItems.length,
-                        itemBuilder: (context, index) {
-                          return _buildCarouselCard(_carouselItems[index]);
-                        },
-                      ),
-                      Positioned(
-                        bottom: 10,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: SmoothPageIndicator(
-                            controller: _carouselController,
-                            count: _carouselItems.length,
-                            effect: const ExpandingDotsEffect(
-                              dotHeight: 6,
-                              dotWidth: 6,
-                              activeDotColor: Colors.white,
-                              dotColor: Colors.white38,
-                              expansionFactor: 3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // ─── Bannière urgences ────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: GestureDetector(
-                    onTap: () => Get.toNamed(AppRoutes.emergency),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFFFF0F1),
-                            Color(0xFFFFE5E8),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color:
-                              AppColors.emergency.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color:
-                                  AppColors.emergency.withValues(alpha: 0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.emergency_rounded,
-                              color: AppColors.emergency,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Urgence médicale ?',
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.emergency,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Appelez le 15 ou accédez aux urgences',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    color: AppColors.emergency
-                                        .withValues(alpha: 0.75),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 14,
-                            color: AppColors.emergency.withValues(alpha: 0.6),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ─── Section : Nos services ───────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Nos services',
-                        style: GoogleFonts.poppins(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => Get.toNamed(AppRoutes.services),
-                        child: Text(
-                          'Voir tout',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: AppColors.primaryLight,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                // ─── Grille 2×2 catégories principales ───────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.5,
-                    children: [
-                      _buildCategoryCard(
-                        icon: Icons.local_hospital_rounded,
-                        label: 'Hôpitaux',
-                        gradient: AppColors.primaryGradient,
-                        onTap: () => Get.toNamed(AppRoutes.hospitals),
-                      ),
-                      _buildCategoryCard(
-                        icon: Icons.local_pharmacy_rounded,
-                        label: 'Pharmacies',
-                        gradient: AppColors.greenGradient,
-                        onTap: () => Get.toNamed(AppRoutes.pharmacies),
-                      ),
-                      _buildCategoryCard(
-                        icon: Icons.emergency_rounded,
-                        label: 'Urgences',
-                        gradient: AppColors.emergencyGradient,
-                        onTap: () => Get.toNamed(AppRoutes.emergency),
-                      ),
-                      _buildCategoryCard(
-                        icon: Icons.person_rounded,
-                        label: 'Spécialistes',
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6B46C1), Color(0xFF9F7AEA)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        onTap: () => Get.toNamed(AppRoutes.services,
-                            arguments: {'category': 'specialist'}),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ─── Section : Services proches (scroll horizontal) ───────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                CircleAvatar(
+                  radius: 32,
+                  backgroundColor: Colors.white.withValues(alpha: 0.25),
                   child: Text(
-                    'Services proches',
+                    user?['firstName']?.toString().isNotEmpty == true
+                        ? user!['firstName'].toString()[0].toUpperCase()
+                        : 'U',
                     style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 80,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      _buildNearbyChip(
-                        icon: Icons.medication_rounded,
-                        label: 'Médicaments',
-                        color: Colors.orange,
-                        onTap: () => Get.toNamed(AppRoutes.services,
-                            arguments: {'category': 'medication'}),
-                      ),
-                      _buildNearbyChip(
-                        icon: Icons.calendar_today_rounded,
-                        label: 'Rendez-vous',
-                        color: Colors.purple,
-                        onTap: () => Get.toNamed(AppRoutes.services,
-                            arguments: {'category': 'appointment'}),
-                      ),
-                      _buildNearbyChip(
-                        icon: Icons.image_rounded,
-                        label: 'Imagerie',
-                        color: Colors.teal,
-                        onTap: () => Get.toNamed(AppRoutes.services,
-                            arguments: {'category': 'imaging'}),
-                      ),
-                      _buildNearbyChip(
-                        icon: Icons.history_rounded,
-                        label: 'Historique',
-                        color: Colors.cyan,
-                        onTap: () => Get.toNamed(AppRoutes.mySearches),
-                      ),
-                      _buildNearbyChip(
-                        icon: Icons.star_rounded,
-                        label: 'Votre avis',
-                        color: Colors.amber,
-                        onTap: () => Get.toNamed(AppRoutes.myOpinion),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ─── Section : Infos santé ────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    'Infos santé',
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildHealthTip(
-                          icon: Icons.water_drop_rounded,
-                          title: 'Hydratation',
-                          tip: 'Buvez au moins 1,5 L d\'eau par jour.',
-                          color: AppColors.primaryLight,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildHealthTip(
-                          icon: Icons.directions_walk_rounded,
-                          title: 'Activité',
-                          tip: '30 min de marche par jour bénéficient au cœur.',
-                          color: AppColors.secondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-              ],
-            ),
-          ),
-        ],
-      ),
-
-      // ─── BottomNavigationBar ─────────────────────────────────────────────
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 16,
-              offset: Offset(0, -4),
-            ),
-          ],
-        ),
-        child: NavigationBar(
-          selectedIndex: _currentNavIndex,
-          backgroundColor: AppColors.surface,
-          indicatorColor: AppColors.primaryLight.withValues(alpha: 0.15),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          onDestinationSelected: (index) {
-            setState(() => _currentNavIndex = index);
-            switch (index) {
-              case 0:
-                break;
-              case 1:
-                Get.toNamed(AppRoutes.map);
-                break;
-              case 2:
-                Get.toNamed(AppRoutes.emergency);
-                break;
-              case 3:
-                Get.toNamed(AppRoutes.profile);
-                break;
-            }
-          },
-          destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.home_outlined,
-                  color: AppColors.mediumGray),
-              selectedIcon: const Icon(Icons.home_rounded,
-                  color: AppColors.primaryLight),
-              label: 'Accueil',
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.map_outlined,
-                  color: AppColors.mediumGray),
-              selectedIcon: const Icon(Icons.map_rounded,
-                  color: AppColors.primaryLight),
-              label: 'Carte',
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.emergency_outlined,
-                  color: AppColors.mediumGray),
-              selectedIcon: const Icon(Icons.emergency_rounded,
-                  color: AppColors.emergency),
-              label: 'Urgences',
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.person_outline_rounded,
-                  color: AppColors.mediumGray),
-              selectedIcon: const Icon(Icons.person_rounded,
-                  color: AppColors.primaryLight),
-              label: 'Profil',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Helpers UI ──────────────────────────────────────────────────────────
-
-  Widget _buildAppBarAction({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-  }
-
-  Widget _buildCarouselCard(_CarouselItem item) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        gradient: item.gradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    item.title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 17,
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.80),
-                      height: 1.45,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              item.icon,
-              size: 64,
-              color: Colors.white.withValues(alpha: 0.20),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryCard({
-    required IconData icon,
-    required String label,
-    required LinearGradient gradient,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 10,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.20),
-                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
+                const SizedBox(height: 10),
+                Text(
+                  auth.userName,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                Text(
+                  auth.userEmail,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNearbyChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.dividerGray),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 6,
-              offset: Offset(0, 2),
+          // Items
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _drawerItem(Icons.home_rounded, 'Accueil',
+                    () => Navigator.pop(context)),
+                _drawerItem(Icons.local_hospital_rounded, 'Hôpitaux', () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.hospitals);
+                }),
+                _drawerItem(Icons.local_pharmacy_rounded, 'Pharmacies', () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.pharmacies);
+                }),
+                _drawerItem(Icons.emergency_rounded, 'Urgences', () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.emergency);
+                }),
+                _drawerItem(Icons.medical_services_rounded, 'Spécialistes', () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.services);
+                }),
+                _drawerItem(Icons.map_rounded, 'Carte', () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.map);
+                }),
+                _drawerItem(Icons.history_rounded, 'Mes recherches', () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.mySearches);
+                }),
+                _drawerItem(Icons.star_rounded, 'Mon avis', () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.myOpinion);
+                }),
+                const Divider(),
+                _drawerItem(Icons.person_rounded, 'Mon profil', () {
+                  Navigator.pop(context);
+                  Get.toNamed(AppRoutes.profile);
+                }),
+                _drawerItem(Icons.logout_rounded, 'Déconnexion', () async {
+                  Navigator.pop(context);
+                  await auth.logout();
+                  Get.offAllNamed(AppRoutes.login);
+                }, color: AppColors.emergency),
+              ],
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 16),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
+          ),
+          // Version
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Allô Secours v1.0.0 — Bénin',
               style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textMedium,
-              ),
+                  fontSize: 11, color: Colors.grey.shade400),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildHealthTip({
-    required IconData icon,
-    required String title,
-    required String tip,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.dividerGray),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+  Widget _drawerItem(IconData icon, String label, VoidCallback onTap,
+      {Color? color}) {
+    return ListTile(
+      leading: Icon(icon, color: color ?? AppColors.primary, size: 22),
+      title: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: color ?? const Color(0xFF212121),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            tip,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: AppColors.textMedium,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
+      onTap: onTap,
+      dense: true,
     );
   }
 }
 
-// ─── Modèle carrousel ─────────────────────────────────────────────────────────
-class _CarouselItem {
-  final String title;
-  final String subtitle;
-  final LinearGradient gradient;
-  final IconData icon;
+// ── Modèles internes ─────────────────────────────────────────────────────────
 
-  const _CarouselItem({
+class _CarouselSlide {
+  final String title;
+  final String bold;
+  final String suffix;
+  final String emoji;
+  final List<Color> colors;
+  const _CarouselSlide({
     required this.title,
-    required this.subtitle,
-    required this.gradient,
-    required this.icon,
+    required this.bold,
+    required this.suffix,
+    required this.emoji,
+    required this.colors,
   });
+}
+
+class _Category {
+  final String label;
+  final String emoji;
+  final String? route;
+  const _Category({required this.label, required this.emoji, this.route});
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  const _NavItem({required this.icon, required this.label});
 }
